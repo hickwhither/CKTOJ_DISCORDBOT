@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Firebase service account key
+serviceAccountKey.json
+cktoj-users-abcxyzhehe-firebase-adminsdk-fbsvc-570dabb74a.json
+
+# Discord button message state
+button_message.json
+
+# Misc
+.DS_Store
+Thumbs.db

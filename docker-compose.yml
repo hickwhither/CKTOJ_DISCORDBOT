@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  bot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: cktoj-discord-bot
+    restart: unless-stopped
+    volumes:
+      # Mount Firebase credentials
+      - ./cktoj-users-abcxyzhehe-firebase-adminsdk.json:/app/cktoj-users-abcxyzhehe-firebase-adminsdk.json:ro
+      # Mount button message state file for persistence
+      - ./button_message.json:/app/button_message.json
+    env_file:
+      - .env
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    name: bot-network
