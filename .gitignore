@@ -1,0 +1,9 @@
+__pycache__
+__pycache__/*
+*/__pycache__/*
+.vscode
+venv
+venv/*
+
+.env
+cktoj-users-abcxyzhehe-firebase-adminsdk.json

@@ -1,0 +1,5 @@
+werkzeug
+python-dotenv
+
+firebase-admin
+discord.py
