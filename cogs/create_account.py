@@ -26,43 +26,60 @@ CERT = "cktoj-users-abcxyzhehe-firebase-adminsdk.json"
 JSON_FILE = "button_message.json"
 CHANNEL_ID = 1419348011896803512
 
-class signup_button(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
+class SignupModal(discord.ui.Modal):
+    def __init__(self, cog):
+        super().__init__(title="Create CKTOJ Account")
+        self.cog = cog
+        
+        self.username = discord.ui.TextInput(
+            label="Username",
+            placeholder="Enter your desired username",
+            min_length=3,
+            max_length=20,
+            required=True,
+        )
+        self.add_item(self.username)
 
-    @discord.ui.button(label="Sign up", style=discord.ButtonStyle.green, custom_id="my_button")
-    async def click_me(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = interaction.client.get_cog('Create_account')
-        if not cog:
-            await interaction.response.send_message("Account creation system is currently unavailable.", ephemeral=True)
-            return
-
-        if cog.check_account_exists(interaction.user.id):
+    async def on_submit(self, interaction: discord.Interaction):
+        if self.cog.check_account_exists(interaction.user.id):
             await interaction.response.send_message("You already have an account!", ephemeral=True)
             return
 
-        success, password = await cog.create_account(interaction.user.id, interaction.user.name)
+        success, password = await self.cog.create_account(interaction.user.id, str(self.username.value))
         
         if not success:
             await interaction.response.send_message("Failed to create account. Please try again later.", ephemeral=True)
             return
 
         try:
-            # Send password via DM
             embed = discord.Embed(
                 title="Account Created Successfully! 🎉",
                 description="Your CKTOJ account has been created. Please keep these credentials safe.",
                 color=discord.Color.green()
             )
-            embed.add_field(name="Username", value=interaction.user.name, inline=False)
+            embed.add_field(name="Username", value=self.username.value, inline=False)
             embed.add_field(name="Password", value=f"||{password}||", inline=False)
             embed.set_footer(text="⚠️ Please keep this information safe and do not share it with anyone!")
             await interaction.user.send(embed=embed)
 
             await interaction.response.send_message("Account created successfully! Check your DMs for your credentials.", ephemeral=True)
         except discord.Forbidden:
-            # If we can't DM the user
             await interaction.response.send_message("Account created but I couldn't send you a DM! Please enable DMs from server members to receive your credentials.", ephemeral=True)
+
+class signup_button(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Sign up", style=discord.ButtonStyle.green, custom_id="my_button")
+    async def signup_click(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cog = interaction.client.get_cog('Create_account')
+        if not cog:
+            return await interaction.response.send_message("Account creation system is currently unavailable.", ephemeral=True)
+        
+        if cog.check_account_exists(interaction.user.id):
+            return await interaction.response.send_message("You already have an account!", ephemeral=True)
+
+        await interaction.response.send_modal(SignupModal(cog))
 
 
 class Create_account(commands.Cog):
@@ -86,10 +103,6 @@ class Create_account(commands.Cog):
             return False
 
     async def create_account(self, user_id: int, username: str) -> tuple[bool, str]:
-        """Create a new account for the user. Returns (success, password)"""
-        if self.check_account_exists(user_id):
-            return False, ""
-            
         password = generate_password()
         account_data = {
             "discord_id": user_id,
@@ -109,16 +122,13 @@ class Create_account(commands.Cog):
     async def cog_load(self):
         self.bot.add_view(signup_button())
         self.check_button.start()
-    
-    def cog_unload(self):
-        self.check_button.cancel()
+    def cog_unload(self): self.check_button.cancel()
 
     def load_message_id(self):
         if not os.path.exists(JSON_FILE):
             return None
         with open(JSON_FILE, "r") as f:
             return json.load(f).get("message_id")
-
     def save_message_id(self, msg_id: int):
         with open(JSON_FILE, "w") as f:
             json.dump({"message_id": msg_id}, f)
