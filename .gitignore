@@ -7,3 +7,4 @@ venv/*
 
 .env
 cktoj-users-abcxyzhehe-firebase-adminsdk.json
+logs

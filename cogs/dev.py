@@ -14,8 +14,8 @@ class Developer(commands.Cog):
     async def sync(self, ctx: commands.Context):
         """sync the tree"""
         self.bot.tree.clear_commands(guild=None)
-        await self.bot.tree.sync()
-        # await self.tree.sync(guild = Object(944606508644204546))
+        # await self.bot.tree.sync()
+        await self.bot.tree.sync(guild = discord.Object(1275798785318064138))
         # await self.tree.sync(guild = Object(941346099011133440))
         # await self.tree.sync(guild = Object(1151743010044911656))
         await ctx.reply('Command tree synced.')
