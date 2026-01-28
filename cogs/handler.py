@@ -22,22 +22,22 @@ class Handler(commands.Cog):
         error = getattr(error, 'original', error)
 
         if isinstance(error, ignored): return
-        if isinstance(error, commands.NSFWChannelRequired): return await ctx.reply("NSFW channel 🔞")
-        if isinstance(error, commands.NotOwner): return await ctx.reply("Bạn không phải owner!")
-        if isinstance(error, commands.DisabledCommand): return await ctx.send(f'{ctx.command} has been disabled.')
+        if isinstance(error, commands.NSFWChannelRequired): return await ctx.reply("NSFW channel 🔞", mention_author=False)
+        if isinstance(error, commands.NotOwner): return await ctx.reply("Bạn không phải owner!", mention_author=False)
+        if isinstance(error, commands.DisabledCommand): return await ctx.send(f'{ctx.command} has been disabled.', mention_author=False)
         if isinstance(error, commands.NoPrivateMessage):
             try:
                 return await ctx.author.send(f'{ctx.command} can not be used in Private Messages.')
             except discord.HTTPException: return
 
-        if isinstance(error, commands.UserInputError): return await ctx.reply(f"UserInputError: {str(error)}")
+        if isinstance(error, commands.UserInputError): return await ctx.reply(f"UserInputError: {str(error)}", mention_author=False)
         
         if isinstance(error, commands.CommandOnCooldown):
             if self.cooldown_message.get(ctx.author.id):
                 return
             current_time = time.time()
 
-            msg = await ctx.reply(f"Chờ cho đến khi <t:{int(current_time + error.retry_after)}:R> để sử dụng lệnh.")
+            msg = await ctx.reply(f"Chờ cho đến khi <t:{int(current_time + error.retry_after)}:R> để sử dụng lệnh.", mention_author=False)
             self.cooldown_message[ctx.author.id] = True
 
             await asyncio.sleep(min(10,error.retry_after))

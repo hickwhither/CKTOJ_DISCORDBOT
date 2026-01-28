@@ -1,5 +1,5 @@
 werkzeug
 python-dotenv
 
-firebase-admin
+requests
 discord.py

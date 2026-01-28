@@ -3,8 +3,8 @@ from discord.ext import tasks, commands
 import os, json, datetime
 import string, random
 
-from werkzeug.security import generate_password_hash
-from google.cloud.firestore import FieldFilter
+import requests
+from urllib.parse import urlencode
 
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(Create_account(bot))
@@ -13,102 +13,74 @@ def log(msg: str):
     now = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
     print(f"{now} {msg}")
 
-def generate_password(length: int = 12) -> str:
-    characters = string.ascii_letters + string.digits + "!@#$%^&*"
-    password = ''.join(random.choice(characters) for _ in range(length))
-    return password
-
 JSON_FILE = "button_message.json"
 CHANNEL_ID = 1419348011896803512
 
-class SignupModal(discord.ui.Modal):
-    def __init__(self, cog):
-        super().__init__(title="Create CKTOJ Account")
-        self.cog = cog
-        
-        self.username = discord.ui.TextInput(
-            label="Username",
-            placeholder="Nhập username đi cưng",
-            min_length=3,
-            max_length=20,
-            required=True,
-        )
-        self.add_item(self.username)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        if self.cog.check_account_exists(interaction.user.id):
-            await interaction.response.send_message("Bạn đã có account!", ephemeral=True)
-            return
-
-        success, password = await self.cog.create_account(interaction.user.id, str(self.username.value))
-        
-        if not success:
-            await interaction.response.send_message("Không thể tạo account. Vui lòng thử lại sau.", ephemeral=True)
-            return
-
-        try:
-            embed = discord.Embed(
-                title=f"Hé lô {self.username.value}! 🎉",
-                description="Truy cập website bằng tài khoản này và đổi mật khẩu.",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="Username", value=self.username.value, inline=False)
-            embed.add_field(name="Password", value=f"||{password}||", inline=False)
-            embed.set_footer(text="⚠️ Vui lòng đổi mật khẩu sau khi đăng nhập thành công")
-            await interaction.user.send(embed=embed)
-
-            await interaction.response.send_message("Tạo tài khoản thành công! Kiểm tra DMs để xác thực thông tin.", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("Có vẻ như bạn đã chặn gửi DMs! Hãy sử dụng lại lệnh /resetpassword khi DM cho mình.", ephemeral=True)
+CKTOJ_DISCORDBOT = os.environ["CKTOJ_DISCORDBOT"]
+FRONTEND = os.environ["FRONTEND"].rstrip('/')
+BACKEND = os.environ["BACKEND"].rstrip('/')
+HEADERS = {
+    "Authorization": f"Bearer {CKTOJ_DISCORDBOT}",
+    "Content-Type": "application/json"
+}
 
 class signup_button(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-
-    @discord.ui.button(label="Sign up", style=discord.ButtonStyle.green, custom_id="my_button")
-    async def signup_click(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = interaction.client.get_cog('Create_account')
-        if not cog:
-            return await interaction.response.send_message("Sign up hiện không hoạt động.", ephemeral=True)
+    
+    def get_user(self, user):
+        resp = requests.get(
+            f"{BACKEND}/verify/profile",
+            headers=HEADERS,
+            params=dict(discord_id=user.id))
         
-        if cog.check_account_exists(interaction.user.id):
-            return await interaction.response.send_message("Bạn đã có account!", ephemeral=True)
+        try: return resp.json()
+        except requests.exceptions.JSONDecodeError: return None
+    
+    def create_verify(self, user):
+        resp = requests.post(
+            f"{BACKEND}/verify/create",
+            headers=HEADERS,
+            json={"discord_id": user.id},
+            timeout=10
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        secret = data.get("secret")
+        return secret
+    
+    async def button_handler(self, interaction, type):
+        try:
+            secret = self.create_verify(interaction.user)
+            params = urlencode({"type":type, "secret": secret, "discord_id": interaction.user.id})
+            link = f"{FRONTEND}/confirm?{params}"
 
-        await interaction.response.send_modal(SignupModal(cog))
+            view = discord.ui.View()
+            view.add_item(discord.ui.Button(label="Xác thực tài khoản", url=link, style=discord.ButtonStyle.link))
+
+            await interaction.response.send_message("Nhấn nút để xác thực tài khoản (hết hạn 5 phút).", view=view, ephemeral=True)
+        except Exception as e:
+            log(f"Failed to create verify link for {interaction.user.id}: {e}")
+            await interaction.response.send_message("Có lỗi khi tạo link xác thực, vui lòng thử lại sau.", ephemeral=True)
+
+    @discord.ui.button(label="Sign up", style=discord.ButtonStyle.green, custom_id="signup_click")
+    async def signup_click(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.get_user(interaction.user):
+            return await interaction.response.send_message("Bạn đã có tài khoản.", ephemeral=True)
+        return await self.button_handler(interaction, "create_account")
+
+    
+    @discord.ui.button(label="Change password", style=discord.ButtonStyle.primary, custom_id="changepassword_click")
+    async def changepassword_click(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.get_user(interaction.user):
+            return await interaction.response.send_message("Bạn chưa có tài khoản mà?", ephemeral=True)
+        return await self.button_handler(interaction, "change_password")
+        
 
 
 class Create_account(commands.Cog):
     def __init__(self, bot:commands.Bot) -> None:
         self.bot = bot
-        self.db = self.bot.db
-        self.users_ref = self.bot.users_ref
-        
-    def check_account_exists(self, user_id: int) -> bool:
-        """Check if a user already has an account"""
-        try:
-            # Query by discord_id
-            docs = self.users_ref.where(filter=FieldFilter("discord_id", "==", user_id)).get()
-            return len(docs) > 0
-        except Exception as e:
-            log(f"Error checking account existence: {e}")
-            return False
-
-    async def create_account(self, user_id: int, username: str) -> tuple[bool, str]:
-        password = generate_password()
-        account_data = {
-            "discord_id": user_id,
-            "username": username,
-            "password": generate_password_hash(password),
-            "created_at": datetime.datetime.now()
-        }
-        
-        try:
-            # Add a new document with auto-generated ID
-            self.users_ref.add(account_data)
-            return True, password
-        except Exception as e:
-            log(f"Error creating account: {e}")
-            return False, ""
     
     async def cog_load(self):
         self.bot.add_view(signup_button())

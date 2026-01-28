@@ -4,10 +4,6 @@ import discord
 from discord import Message, Object
 from discord.ext.commands import Bot
 
-from google.cloud.firestore import FieldFilter
-import firebase_admin
-from firebase_admin import credentials, firestore
-CERT = "cktoj-users-abcxyzhehe-firebase-adminsdk.json"
 
 class CKTOJ(Bot):
     secret: dict
@@ -27,12 +23,6 @@ class CKTOJ(Bot):
             await self.process_commands(message)
 
     async def setup_hook(self):
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(CERT)
-            firebase_admin.initialize_app(cred)
-        self.db = firestore.client()
-        self.users_ref = self.db.collection("user")
-    
         self.extra_log = []
         for file in os.listdir('cogs'):
             if not file.startswith('_') and (os.path.exists(os.path.join('cogs', file)) or file.endswith('.py')):
