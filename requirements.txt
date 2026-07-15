@@ -1,5 +1,0 @@
-werkzeug
-python-dotenv
-
-requests
-discord.py

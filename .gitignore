@@ -1,10 +1,12 @@
-__pycache__
-__pycache__/*
-*/__pycache__/*
-.vscode
-venv
-venv/*
+# Python files
+local_settings.py
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
 
 .env
-cktoj-users-abcxyzhehe-firebase-adminsdk.json
 logs

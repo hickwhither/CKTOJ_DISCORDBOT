@@ -10,7 +10,7 @@ def has_ban_role():
     """Check if user has the ban role (1275798993330376775) or is bot owner"""
     async def predicate(ctx):
         # Check if bot owner
-        if ctx.bot.is_owner(ctx.author):
+        if await ctx.bot.is_owner(ctx.author):
             return True
         # Check if has the ban role
         role = ctx.guild.get_role(1275798993330376775)
@@ -29,13 +29,13 @@ class VoiceManager(commands.Cog):
             if user.voice and user.voice.channel.id == 1275798785888358539:  # Check if still in target channel
                 await user.move_to(original_channel)
                 
-                # Add roles back
-                try:
-                    await user.add_roles(*user_roles, reason="Restoring roles after ban36")
-                except discord.Forbidden:
-                    pass  # Can't send message here since no ctx
-                except Exception:
-                    pass
+            # Add roles back
+            try:
+                await user.add_roles(*user_roles, reason="Restoring roles after ban36")
+            except discord.Forbidden:
+                pass  # Can't send message here since no ctx
+            except Exception:
+                pass
         finally:
             # Clean up
             self.active_bans.pop(user.id, None)

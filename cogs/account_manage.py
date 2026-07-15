@@ -4,10 +4,6 @@ from discord.ext import tasks, commands
 import os, json, datetime
 import string, random
 
-from google.cloud.firestore import FieldFilter
-import firebase_admin
-from firebase_admin import credentials, firestore
-
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(AccountManager(bot))
 
